@@ -149,6 +149,30 @@ function answersToArray(answers: Answers) {
   return QUESTIONS.map((question) => answers[question.id] ?? -1);
 }
 
+function getAuthErrorMessage(error: unknown, authMode: "signIn" | "signUp") {
+  const defaultSignInMessage =
+    "Could not sign in. Check your email and password, or create an account if this is your first time here.";
+  const invalidCredentialsMessage =
+    "We could not find an account for that email and password. Check the email address, or create an account if this is your first time here.";
+
+  if (!(error instanceof Error)) {
+    return authMode === "signIn"
+      ? defaultSignInMessage
+      : "Could not create your account.";
+  }
+
+  if (
+    authMode === "signIn" &&
+    (error.message.includes("Invalid credentials") ||
+      error.message.includes("InvalidAccountId") ||
+      error.message.includes("InvalidSecret"))
+  ) {
+    return invalidCredentialsMessage;
+  }
+
+  return error.message;
+}
+
 function getScoreInterpretation(score: number) {
   if (score >= 20) {
     return {
@@ -666,9 +690,7 @@ function AuthPrompt({
         password,
       });
     } catch (error) {
-      setAuthError(
-        error instanceof Error ? error.message : "Could not sign in.",
-      );
+      setAuthError(getAuthErrorMessage(error, authMode));
     } finally {
       setIsSubmittingAuth(false);
     }
