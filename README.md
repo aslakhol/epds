@@ -16,6 +16,21 @@ pnpm install
 pnpm dev
 ```
 
+## Email reminders
+
+Weekly and monthly reminders are sent with SendGrid from a Convex cron. Configure
+these Convex environment variables before enabling reminders in production:
+
+```sh
+SENDGRID_API_KEY=...
+EPDS_APP_URL=https://your-app.example
+SENDGRID_FROM_EMAIL=post@shera.no
+SENDGRID_FROM_NAME=Shera
+```
+
+`SENDGRID_FROM_EMAIL` and `SENDGRID_FROM_NAME` are optional if the defaults are
+correct.
+
 ## Vercel deployment
 
 Set the Vercel build command to:

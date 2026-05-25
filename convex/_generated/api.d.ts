@@ -9,9 +9,13 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as crons from "../crons.js";
+import type * as emails from "../emails.js";
 import type * as epds from "../epds.js";
 import type * as http from "../http.js";
 import type * as myFunctions from "../myFunctions.js";
+import type * as reminderDates from "../reminderDates.js";
+import type * as reminders from "../reminders.js";
 
 import type {
   ApiFromModules,
@@ -21,9 +25,13 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  crons: typeof crons;
+  emails: typeof emails;
   epds: typeof epds;
   http: typeof http;
   myFunctions: typeof myFunctions;
+  reminderDates: typeof reminderDates;
+  reminders: typeof reminders;
 }>;
 
 /**

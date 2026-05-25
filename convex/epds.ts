@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { MutationCtx, mutation, query } from "./_generated/server";
+import { getNextReminderAt } from "./reminderDates";
 
 const answersValidator = v.array(v.number());
 const reminderCadenceValidator = v.union(
@@ -59,6 +60,7 @@ export const setReminderPreference = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireAuthUserId(ctx);
+    const now = Date.now();
     const existingPreference = await ctx.db
       .query("reminderPreferences")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -67,11 +69,18 @@ export const setReminderPreference = mutation({
     if (existingPreference === null) {
       await ctx.db.insert("reminderPreferences", {
         cadence: args.cadence,
+        nextReminderAt: getNextReminderAt(args.cadence, now),
         userId,
       });
     } else {
       await ctx.db.patch("reminderPreferences", existingPreference._id, {
         cadence: args.cadence,
+        lastSendError: "",
+        nextReminderAt:
+          existingPreference.cadence === args.cadence &&
+          existingPreference.nextReminderAt !== undefined
+            ? existingPreference.nextReminderAt
+            : getNextReminderAt(args.cadence, now),
       });
     }
 

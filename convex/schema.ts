@@ -21,6 +21,12 @@ export default defineSchema({
       v.literal("weekly"),
       v.literal("monthly"),
     ),
+    lastReminderSentAt: v.optional(v.number()),
+    lastSendAttemptAt: v.optional(v.number()),
+    lastSendError: v.optional(v.string()),
+    nextReminderAt: v.optional(v.number()),
     userId: v.id("users"),
-  }).index("by_userId", ["userId"]),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_nextReminderAt", ["nextReminderAt"]),
 });
