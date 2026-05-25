@@ -3,6 +3,10 @@ import { v } from "convex/values";
 import { MutationCtx, mutation, query } from "./_generated/server";
 
 const answersValidator = v.array(v.number());
+const reminderCadenceValidator = v.union(
+  v.literal("weekly"),
+  v.literal("monthly"),
+);
 
 async function requireAuthUserId(ctx: MutationCtx) {
   const userId = await getAuthUserId(ctx);
@@ -16,21 +20,45 @@ export const saveResult = mutation({
   args: {
     answers: answersValidator,
     score: v.number(),
-    reminderCadence: v.union(
-      v.literal("none"),
-      v.literal("weekly"),
-      v.literal("monthly"),
-    ),
   },
   handler: async (ctx, args) => {
     const userId = await requireAuthUserId(ctx);
 
-    const resultId = await ctx.db.insert("epdsResults", {
+    return await ctx.db.insert("epdsResults", {
       answers: args.answers,
       score: args.score,
       userId,
     });
+  },
+});
 
+export const deleteResult = mutation({
+  args: {
+    resultId: v.id("epdsResults"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireAuthUserId(ctx);
+    const result = await ctx.db.get("epdsResults", args.resultId);
+
+    if (result === null) {
+      return null;
+    }
+
+    if (result.userId !== userId) {
+      throw new Error("Unauthorized");
+    }
+
+    await ctx.db.delete("epdsResults", args.resultId);
+    return null;
+  },
+});
+
+export const setReminderPreference = mutation({
+  args: {
+    cadence: reminderCadenceValidator,
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireAuthUserId(ctx);
     const existingPreference = await ctx.db
       .query("reminderPreferences")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -38,16 +66,33 @@ export const saveResult = mutation({
 
     if (existingPreference === null) {
       await ctx.db.insert("reminderPreferences", {
-        cadence: args.reminderCadence,
+        cadence: args.cadence,
         userId,
       });
     } else {
       await ctx.db.patch("reminderPreferences", existingPreference._id, {
-        cadence: args.reminderCadence,
+        cadence: args.cadence,
       });
     }
 
-    return resultId;
+    return null;
+  },
+});
+
+export const deleteReminderPreference = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireAuthUserId(ctx);
+    const existingPreference = await ctx.db
+      .query("reminderPreferences")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+
+    if (existingPreference !== null) {
+      await ctx.db.delete("reminderPreferences", existingPreference._id);
+    }
+
+    return null;
   },
 });
 
@@ -63,7 +108,7 @@ export const listMyResults = query({
       .query("epdsResults")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .order("desc")
-      .take(5);
+      .take(20);
 
     return results.map((result) => ({
       _id: result._id,

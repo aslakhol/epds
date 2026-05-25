@@ -2,6 +2,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { FormEvent, useMemo, useState } from "react";
 import { api } from "../convex/_generated/api";
+import { Id } from "../convex/_generated/dataModel";
 
 type EpdsOption = {
   label: string;
@@ -130,7 +131,12 @@ const QUESTIONS: EpdsQuestion[] = [
 ];
 
 type Answers = Record<number, number>;
-type ReminderCadence = "none" | "weekly" | "monthly";
+type ReminderCadence = "weekly" | "monthly";
+type SavedResult = {
+  _id: Id<"epdsResults">;
+  _creationTime: number;
+  score: number;
+};
 
 function calculateScore(answers: Answers) {
   return QUESTIONS.reduce((total, question) => {
@@ -172,13 +178,25 @@ export default function App() {
   const [submitted, setSubmitted] = useState(false);
   const [reminderCadence, setReminderCadence] =
     useState<ReminderCadence | null>(null);
+  const [showAuthPanel, setShowAuthPanel] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [reminderError, setReminderError] = useState<string | null>(null);
   const [savedResultSignature, setSavedResultSignature] = useState<
     string | null
   >(null);
   const [isSavingResult, setIsSavingResult] = useState(false);
+  const [isDeletingResult, setIsDeletingResult] =
+    useState<Id<"epdsResults"> | null>(null);
+  const [isSavingReminder, setIsSavingReminder] = useState(false);
+  const [isCancellingReminder, setIsCancellingReminder] = useState(false);
   const { isAuthenticated, isLoading } = useConvexAuth();
   const saveResult = useMutation(api.epds.saveResult);
+  const deleteResult = useMutation(api.epds.deleteResult);
+  const setReminderPreference = useMutation(api.epds.setReminderPreference);
+  const deleteReminderPreference = useMutation(
+    api.epds.deleteReminderPreference,
+  );
   const recentResults = useQuery(api.epds.listMyResults);
   const reminderPreference = useQuery(api.epds.getReminderPreference);
 
@@ -189,8 +207,13 @@ export default function App() {
   const answerValues = useMemo(() => answersToArray(answers), [answers]);
   const currentResultSignature = `${score}:${answerValues.join(",")}`;
   const isResultSaved = savedResultSignature === currentResultSignature;
+  const activeReminderCadence =
+    reminderPreference?.cadence === "weekly" ||
+    reminderPreference?.cadence === "monthly"
+      ? reminderPreference.cadence
+      : null;
   const selectedReminderCadence =
-    reminderCadence ?? reminderPreference?.cadence ?? "weekly";
+    reminderCadence ?? activeReminderCadence ?? "weekly";
 
   async function handleSaveResult() {
     if (!isComplete || !isAuthenticated || isSavingResult) {
@@ -203,7 +226,6 @@ export default function App() {
     try {
       await saveResult({
         answers: answerValues,
-        reminderCadence: selectedReminderCadence,
         score,
       });
       setSavedResultSignature(currentResultSignature);
@@ -213,6 +235,72 @@ export default function App() {
       );
     } finally {
       setIsSavingResult(false);
+    }
+  }
+
+  async function handleDeleteResult(resultId: Id<"epdsResults">) {
+    if (
+      isDeletingResult !== null ||
+      !window.confirm("Delete this saved score?")
+    ) {
+      return;
+    }
+
+    setIsDeletingResult(resultId);
+    setDeleteError(null);
+
+    try {
+      await deleteResult({ resultId });
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error ? error.message : "Could not delete this score.",
+      );
+    } finally {
+      setIsDeletingResult(null);
+    }
+  }
+
+  async function handleSaveReminder() {
+    if (!isAuthenticated || isSavingReminder) {
+      return;
+    }
+
+    setIsSavingReminder(true);
+    setReminderError(null);
+
+    try {
+      await setReminderPreference({ cadence: selectedReminderCadence });
+    } catch (error) {
+      setReminderError(
+        error instanceof Error
+          ? error.message
+          : "Could not save reminder settings.",
+      );
+    } finally {
+      setIsSavingReminder(false);
+    }
+  }
+
+  async function handleCancelReminder() {
+    if (
+      isCancellingReminder ||
+      !window.confirm("Cancel reminders for this account?")
+    ) {
+      return;
+    }
+
+    setIsCancellingReminder(true);
+    setReminderError(null);
+
+    try {
+      await deleteReminderPreference({});
+      setReminderCadence(null);
+    } catch (error) {
+      setReminderError(
+        error instanceof Error ? error.message : "Could not cancel reminders.",
+      );
+    } finally {
+      setIsCancellingReminder(false);
     }
   }
 
@@ -246,7 +334,40 @@ export default function App() {
             Each answer scores 0 to 3. Questions 1, 2, and 4 score left to
             right; questions 3 and 5 through 10 score right to left.
           </p>
+          {!isLoading && !isAuthenticated && !submitted && (
+            <button
+              className="mt-4 min-h-10 rounded-md border border-[#d6cec2] px-3 py-2 text-sm font-semibold text-[#3b3631] transition active:scale-[0.99]"
+              onClick={() => setShowAuthPanel((current) => !current)}
+              type="button"
+            >
+              {showAuthPanel ? "Hide sign in" : "Sign in"}
+            </button>
+          )}
         </section>
+
+        {!isLoading && !isAuthenticated && showAuthPanel && !submitted && (
+          <AuthPrompt
+            description="Sign in to see saved scores and manage reminders."
+            title="Sign in"
+          />
+        )}
+
+        {!isLoading && isAuthenticated && (
+          <AccountPanel
+            activeReminderCadence={activeReminderCadence}
+            deleteError={deleteError}
+            isCancellingReminder={isCancellingReminder}
+            isDeletingResult={isDeletingResult}
+            isSavingReminder={isSavingReminder}
+            recentResults={recentResults}
+            reminderCadence={selectedReminderCadence}
+            reminderError={reminderError}
+            onCancelReminder={() => void handleCancelReminder()}
+            onDeleteResult={(resultId) => void handleDeleteResult(resultId)}
+            onReminderCadenceChange={setReminderCadence}
+            onSaveReminder={() => void handleSaveReminder()}
+          />
+        )}
 
         {submitted && (
           <div className="flex flex-col gap-4">
@@ -275,17 +396,17 @@ export default function App() {
                 </p>
               </section>
             ) : isAuthenticated ? (
-              <ResultStoragePanel
+              <SaveResultPanel
                 isResultSaved={isResultSaved}
                 isSavingResult={isSavingResult}
-                recentResults={recentResults}
-                reminderCadence={selectedReminderCadence}
                 saveError={saveError}
-                onReminderCadenceChange={setReminderCadence}
                 onSaveResult={() => void handleSaveResult()}
               />
             ) : (
-              <AuthPrompt />
+              <AuthPrompt
+                description="Your answers stay on this device unless you choose to sign in."
+                title="Log in to save this result"
+              />
             )}
           </div>
         )}
@@ -324,36 +445,82 @@ export default function App() {
   );
 }
 
-function ResultStoragePanel({
+function SaveResultPanel({
   isResultSaved,
   isSavingResult,
-  recentResults,
-  reminderCadence,
   saveError,
-  onReminderCadenceChange,
   onSaveResult,
 }: {
   isResultSaved: boolean;
   isSavingResult: boolean;
-  recentResults:
-    | Array<{ _id: string; _creationTime: number; score: number }>
-    | undefined;
-  reminderCadence: ReminderCadence;
   saveError: string | null;
-  onReminderCadenceChange: (cadence: ReminderCadence) => void;
   onSaveResult: () => void;
 }) {
+  return (
+    <section className="rounded-lg border border-[#d6cec2] bg-white px-4 py-5 shadow-sm sm:px-6">
+      <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#765f45]">
+        Save privately
+      </p>
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <button
+          className="min-h-12 rounded-md bg-[#315d47] px-5 py-3 text-base font-bold text-white shadow-sm transition enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#b9b1a8] disabled:text-[#5b554f]"
+          disabled={isResultSaved || isSavingResult}
+          onClick={onSaveResult}
+          type="button"
+        >
+          {isResultSaved
+            ? "Result saved"
+            : isSavingResult
+              ? "Saving..."
+              : "Save this score"}
+        </button>
+        {saveError !== null && (
+          <p className="text-sm font-semibold text-[#8a3324]">{saveError}</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function AccountPanel({
+  activeReminderCadence,
+  deleteError,
+  isCancellingReminder,
+  isDeletingResult,
+  isSavingReminder,
+  recentResults,
+  reminderCadence,
+  reminderError,
+  onCancelReminder,
+  onDeleteResult,
+  onReminderCadenceChange,
+  onSaveReminder,
+}: {
+  activeReminderCadence: ReminderCadence | null;
+  deleteError: string | null;
+  isCancellingReminder: boolean;
+  isDeletingResult: Id<"epdsResults"> | null;
+  isSavingReminder: boolean;
+  recentResults: SavedResult[] | undefined;
+  reminderCadence: ReminderCadence;
+  reminderError: string | null;
+  onCancelReminder: () => void;
+  onDeleteResult: (resultId: Id<"epdsResults">) => void;
+  onReminderCadenceChange: (cadence: ReminderCadence) => void;
+  onSaveReminder: () => void;
+}) {
   const { signOut } = useAuthActions();
+  const hasResults = recentResults !== undefined && recentResults.length > 0;
 
   return (
     <section className="rounded-lg border border-[#d6cec2] bg-white px-4 py-5 shadow-sm sm:px-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#765f45]">
-            Save privately
+            Account
           </p>
           <h2 className="mt-1 text-xl font-bold leading-7">
-            Store this result and set reminders
+            Saved scores and reminders
           </h2>
         </div>
         <button
@@ -365,80 +532,121 @@ function ResultStoragePanel({
         </button>
       </div>
 
-      <fieldset className="mt-4">
-        <legend className="text-sm font-semibold text-[#3b3631]">
-          Reminder cadence
-        </legend>
-        <div className="mt-2 grid gap-2 sm:grid-cols-3">
-          {[
-            { label: "Weekly", value: "weekly" },
-            { label: "Monthly", value: "monthly" },
-            { label: "No reminders", value: "none" },
-          ].map((option) => (
-            <label
-              className={`flex min-h-12 cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-center text-sm font-semibold transition ${
-                reminderCadence === option.value
-                  ? "border-[#315d47] bg-[#e8f0e5] text-[#1d3228]"
-                  : "border-[#d6cec2] bg-[#fbfaf8] text-[#3b3631]"
-              }`}
-              key={option.value}
+      <div className="mt-5 grid gap-5">
+        <div>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+            <h3 className="text-base font-bold text-[#23201d]">Reminders</h3>
+            <p className="text-sm text-[#5b554f]">
+              {activeReminderCadence === null
+                ? "No reminder is set."
+                : `${activeReminderCadence === "weekly" ? "Weekly" : "Monthly"} reminder set.`}
+            </p>
+          </div>
+          <fieldset className="mt-3">
+            <legend className="sr-only">Reminder cadence</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                { label: "Weekly", value: "weekly" },
+                { label: "Monthly", value: "monthly" },
+              ].map((option) => (
+                <label
+                  className={`flex min-h-12 cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-center text-sm font-semibold transition ${
+                    reminderCadence === option.value
+                      ? "border-[#315d47] bg-[#e8f0e5] text-[#1d3228]"
+                      : "border-[#d6cec2] bg-[#fbfaf8] text-[#3b3631]"
+                  }`}
+                  key={option.value}
+                >
+                  <input
+                    checked={reminderCadence === option.value}
+                    className="sr-only"
+                    name="reminderCadence"
+                    onChange={() =>
+                      onReminderCadenceChange(option.value as ReminderCadence)
+                    }
+                    type="radio"
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <button
+              className="min-h-11 rounded-md bg-[#315d47] px-4 py-2 text-sm font-bold text-white shadow-sm transition enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#b9b1a8] disabled:text-[#5b554f]"
+              disabled={isSavingReminder}
+              onClick={onSaveReminder}
+              type="button"
             >
-              <input
-                checked={reminderCadence === option.value}
-                className="sr-only"
-                name="reminderCadence"
-                onChange={() =>
-                  onReminderCadenceChange(option.value as ReminderCadence)
-                }
-                type="radio"
-              />
-              {option.label}
-            </label>
-          ))}
+              {isSavingReminder ? "Saving..." : "Save reminder"}
+            </button>
+            <button
+              className="min-h-11 rounded-md border border-[#d6cec2] px-4 py-2 text-sm font-semibold text-[#3b3631] transition enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:text-[#8d867f]"
+              disabled={activeReminderCadence === null || isCancellingReminder}
+              onClick={onCancelReminder}
+              type="button"
+            >
+              {isCancellingReminder ? "Cancelling..." : "Cancel reminders"}
+            </button>
+            {reminderError !== null && (
+              <p className="text-sm font-semibold text-[#8a3324]">
+                {reminderError}
+              </p>
+            )}
+          </div>
         </div>
-      </fieldset>
 
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <button
-          className="min-h-12 rounded-md bg-[#315d47] px-5 py-3 text-base font-bold text-white shadow-sm transition enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#b9b1a8] disabled:text-[#5b554f]"
-          disabled={isResultSaved || isSavingResult}
-          onClick={onSaveResult}
-          type="button"
-        >
-          {isResultSaved
-            ? "Result saved"
-            : isSavingResult
-              ? "Saving..."
-              : "Save result"}
-        </button>
-        {saveError !== null && (
-          <p className="text-sm font-semibold text-[#8a3324]">{saveError}</p>
-        )}
+        <div className="border-t border-[#e5ddd2] pt-4">
+          <h3 className="text-base font-bold text-[#23201d]">Saved scores</h3>
+          {recentResults === undefined ? (
+            <p className="mt-2 text-sm leading-6 text-[#5b554f]">
+              Loading scores...
+            </p>
+          ) : hasResults ? (
+            <ol className="mt-2 flex flex-col gap-2">
+              {recentResults.map((result) => (
+                <li
+                  className="flex flex-col gap-2 rounded-md bg-[#fbfaf8] px-3 py-2 text-sm text-[#3b3631] sm:flex-row sm:items-center sm:justify-between"
+                  key={result._id}
+                >
+                  <span>{new Date(result._creationTime).toLocaleString()}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold">{result.score}/30</span>
+                    <button
+                      className="min-h-9 rounded-md border border-[#d6cec2] px-3 py-1 text-sm font-semibold text-[#7a2e22] transition enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:text-[#8d867f]"
+                      disabled={isDeletingResult === result._id}
+                      onClick={() => onDeleteResult(result._id)}
+                      type="button"
+                    >
+                      {isDeletingResult === result._id ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-2 text-sm leading-6 text-[#5b554f]">
+              No saved scores yet.
+            </p>
+          )}
+          {deleteError !== null && (
+            <p className="mt-2 text-sm font-semibold text-[#8a3324]">
+              {deleteError}
+            </p>
+          )}
+        </div>
       </div>
-
-      {recentResults !== undefined && recentResults.length > 0 && (
-        <div className="mt-5 border-t border-[#e5ddd2] pt-4">
-          <h3 className="text-sm font-semibold uppercase tracking-[0.08em] text-[#765f45]">
-            Recent scores
-          </h3>
-          <ol className="mt-2 flex flex-col gap-2">
-            {recentResults.map((result) => (
-              <li
-                className="flex items-center justify-between gap-3 rounded-md bg-[#fbfaf8] px-3 py-2 text-sm text-[#3b3631]"
-                key={result._id}
-              >
-                <span>{new Date(result._creationTime).toLocaleString()}</span>
-                <span className="font-bold">{result.score}/30</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
     </section>
   );
 }
 
-function AuthPrompt() {
+function AuthPrompt({
+  description,
+  title,
+}: {
+  description: string;
+  title: string;
+}) {
   const { signIn } = useAuthActions();
   const [authMode, setAuthMode] = useState<"signIn" | "signUp">("signIn");
   const [email, setEmail] = useState("");
@@ -471,12 +679,8 @@ function AuthPrompt() {
       <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#765f45]">
         Optional
       </p>
-      <h2 className="mt-1 text-xl font-bold leading-7">
-        Log in to save this result and set reminders
-      </h2>
-      <p className="mt-2 text-sm leading-6 text-[#5b554f]">
-        Your answers stay on this device unless you choose to sign in.
-      </p>
+      <h2 className="mt-1 text-xl font-bold leading-7">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-[#5b554f]">{description}</p>
 
       <div className="mt-4 grid grid-cols-2 rounded-md border border-[#d6cec2] bg-[#fbfaf8] p-1">
         {[
