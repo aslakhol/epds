@@ -128,12 +128,35 @@ const QUESTIONS: EpdsQuestion[] = [
 
 type Answers = Record<number, number>;
 
-function calculateTemporaryScore(answers: Answers) {
-  // Temporary scoring only. Replace after the final scoring rules are supplied.
+function calculateScore(answers: Answers) {
   return QUESTIONS.reduce((total, question) => {
     const selectedOptionIndex = answers[question.id];
     return total + (question.options[selectedOptionIndex]?.score ?? 0);
   }, 0);
+}
+
+function getScoreInterpretation(score: number) {
+  if (score >= 20) {
+    return {
+      label: "More serious signal",
+      description:
+        "A score of 20 or more is described as signaling a more serious depression concern.",
+    };
+  }
+
+  if (score >= 10) {
+    return {
+      label: "Mild-depression signal",
+      description:
+        "Doctors typically use a cutoff of 10 or 12 as a signal of mild depression.",
+    };
+  }
+
+  return {
+    label: "Below common cutoff",
+    description:
+      "This total is below the common 10 to 12 cutoff described for mild depression screening.",
+  };
 }
 
 export default function App() {
@@ -142,7 +165,8 @@ export default function App() {
 
   const answeredCount = Object.keys(answers).length;
   const isComplete = answeredCount === QUESTIONS.length;
-  const score = useMemo(() => calculateTemporaryScore(answers), [answers]);
+  const score = useMemo(() => calculateScore(answers), [answers]);
+  const scoreInterpretation = getScoreInterpretation(score);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -167,12 +191,12 @@ export default function App() {
             Edinburgh Postnatal Depression Scale
           </h1>
           <p className="mt-3 max-w-2xl text-base leading-7 text-[#5b554f]">
-            Answer each question, then submit to see a temporary score. This
-            version does not save answers.
+            Answer each question, then submit to see your score. This version
+            does not save answers.
           </p>
-          <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-950">
-            Scoring is a placeholder and needs replacing when the final scoring
-            rules are supplied.
+          <p className="mt-3 rounded-md border border-[#d6cec2] bg-[#fffdf9] px-3 py-2 text-sm leading-6 text-[#5b554f]">
+            Each answer scores 0 to 3. Questions 1, 2, and 4 score left to
+            right; questions 3 and 5 through 10 score right to left.
           </p>
         </section>
 
@@ -182,12 +206,17 @@ export default function App() {
             className="rounded-lg border border-[#244736] bg-[#315d47] px-4 py-5 text-white shadow-sm sm:px-6"
           >
             <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#d8ead5]">
-              Temporary score
+              Score
             </p>
-            <p className="mt-2 text-5xl font-bold">{score}</p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-4">
+              <p className="text-5xl font-bold">{score}</p>
+              <p className="pb-1 text-lg font-semibold text-[#eef6ec]">
+                {scoreInterpretation.label}
+              </p>
+            </div>
             <p className="mt-2 text-sm leading-6 text-[#eef6ec]">
-              Out of 30, using placeholder scoring. This result is only shown on
-              this device and is not stored.
+              Out of 30. {scoreInterpretation.description} This result is only
+              shown on this device and is not stored.
             </p>
           </section>
         )}
