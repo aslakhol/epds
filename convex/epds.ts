@@ -5,6 +5,7 @@ import { getNextReminderAt } from "./reminderDates";
 
 const answersValidator = v.array(v.number());
 const reminderCadenceValidator = v.union(
+  v.literal("daily"),
   v.literal("weekly"),
   v.literal("monthly"),
 );

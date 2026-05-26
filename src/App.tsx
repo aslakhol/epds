@@ -131,7 +131,20 @@ const QUESTIONS: EpdsQuestion[] = [
 ];
 
 type Answers = Record<number, number>;
-type ReminderCadence = "weekly" | "monthly";
+type ReminderCadence = "daily" | "weekly" | "monthly";
+const REMINDER_CADENCE_OPTIONS: Array<{
+  label: string;
+  value: ReminderCadence;
+}> = [
+  { label: "Daily", value: "daily" },
+  { label: "Weekly", value: "weekly" },
+  { label: "Monthly", value: "monthly" },
+];
+const REMINDER_CADENCE_LABELS: Record<ReminderCadence, string> = {
+  daily: "Daily",
+  weekly: "Weekly",
+  monthly: "Monthly",
+};
 type SavedResult = {
   _id: Id<"epdsResults">;
   _creationTime: number;
@@ -232,6 +245,7 @@ export default function App() {
   const currentResultSignature = `${score}:${answerValues.join(",")}`;
   const isResultSaved = savedResultSignature === currentResultSignature;
   const activeReminderCadence =
+    reminderPreference?.cadence === "daily" ||
     reminderPreference?.cadence === "weekly" ||
     reminderPreference?.cadence === "monthly"
       ? reminderPreference.cadence
@@ -563,16 +577,13 @@ function AccountPanel({
             <p className="text-sm text-[#5b554f]">
               {activeReminderCadence === null
                 ? "No reminder is set."
-                : `${activeReminderCadence === "weekly" ? "Weekly" : "Monthly"} reminder set.`}
+                : `${REMINDER_CADENCE_LABELS[activeReminderCadence]} reminder set.`}
             </p>
           </div>
           <fieldset className="mt-3">
             <legend className="sr-only">Reminder cadence</legend>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {[
-                { label: "Weekly", value: "weekly" },
-                { label: "Monthly", value: "monthly" },
-              ].map((option) => (
+            <div className="grid gap-2 sm:grid-cols-3">
+              {REMINDER_CADENCE_OPTIONS.map((option) => (
                 <label
                   className={`flex min-h-12 cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-center text-sm font-semibold transition ${
                     reminderCadence === option.value
@@ -586,7 +597,7 @@ function AccountPanel({
                     className="sr-only"
                     name="reminderCadence"
                     onChange={() =>
-                      onReminderCadenceChange(option.value as ReminderCadence)
+                      onReminderCadenceChange(option.value)
                     }
                     type="radio"
                   />

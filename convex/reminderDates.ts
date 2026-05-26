@@ -1,8 +1,13 @@
-export type ReminderCadence = "weekly" | "monthly";
+export type ReminderCadence = "daily" | "weekly" | "monthly";
 
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const WEEK_IN_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function getNextReminderAt(cadence: ReminderCadence, from: number) {
+  if (cadence === "daily") {
+    return from + DAY_IN_MS;
+  }
+
   if (cadence === "weekly") {
     return from + WEEK_IN_MS;
   }

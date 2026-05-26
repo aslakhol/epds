@@ -11,6 +11,7 @@ import { getNextReminderAt, ReminderCadence } from "./reminderDates";
 const DUE_REMINDER_BATCH_SIZE = 50;
 
 const reminderCadenceValidator = v.union(
+  v.literal("daily"),
   v.literal("weekly"),
   v.literal("monthly"),
 );
@@ -80,6 +81,7 @@ export const listDueEmailReminders = internalQuery({
 
     for (const preference of preferences) {
       if (
+        preference.cadence !== "daily" &&
         preference.cadence !== "weekly" &&
         preference.cadence !== "monthly"
       ) {

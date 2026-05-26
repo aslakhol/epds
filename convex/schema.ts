@@ -18,6 +18,7 @@ export default defineSchema({
   reminderPreferences: defineTable({
     cadence: v.union(
       v.literal("none"),
+      v.literal("daily"),
       v.literal("weekly"),
       v.literal("monthly"),
     ),
