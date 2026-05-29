@@ -28,7 +28,7 @@ export const sendReminderEmail = internalAction({
           {
             type: "text/plain",
             value: [
-              "It is time for your saved check-in.",
+              "It is time for your saved epds check-in.",
               "",
               `Open the app here: ${appUrl}`,
               "",
@@ -38,7 +38,7 @@ export const sendReminderEmail = internalAction({
           {
             type: "text/html",
             value: [
-              "<p>It is time for your saved check-in.</p>",
+              "<p>It is time for your saved epds check-in.</p>",
               `<p><a href="${escapeHtml(appUrl)}">Open the app</a></p>`,
               "<p>You can cancel these reminders from your account.</p>",
             ].join(""),
@@ -53,7 +53,7 @@ export const sendReminderEmail = internalAction({
             to: [{ email: args.to }],
           },
         ],
-        subject: "Your check-in reminder",
+        subject: "Your epds check-in reminder",
       }),
       headers: {
         Authorization: `Bearer ${apiKey}`,
