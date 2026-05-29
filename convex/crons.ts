@@ -3,9 +3,9 @@ import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
-crons.interval(
+crons.cron(
   "send due email reminders",
-  { hours: 24 },
+  "0 12 * * *",
   internal.reminders.sendDueEmailReminders,
   {},
 );
