@@ -1,6 +1,13 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { FormEvent, useMemo, useState } from "react";
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { api } from "../convex/_generated/api";
 import { Id } from "../convex/_generated/dataModel";
 
@@ -216,13 +223,12 @@ export default function App() {
   const [reminderCadence, setReminderCadence] =
     useState<ReminderCadence | null>(null);
   const [showAuthPanel, setShowAuthPanel] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [reminderError, setReminderError] = useState<string | null>(null);
   const [savedResultSignature, setSavedResultSignature] = useState<
     string | null
   >(null);
-  const [isSavingResult, setIsSavingResult] = useState(false);
+  const pendingSaveSignatureRef = useRef<string | null>(null);
   const [isDeletingResult, setIsDeletingResult] =
     useState<Id<"epdsResults"> | null>(null);
   const [isSavingReminder, setIsSavingReminder] = useState(false);
@@ -243,7 +249,6 @@ export default function App() {
   const scoreInterpretation = getScoreInterpretation(score);
   const answerValues = useMemo(() => answersToArray(answers), [answers]);
   const currentResultSignature = `${score}:${answerValues.join(",")}`;
-  const isResultSaved = savedResultSignature === currentResultSignature;
   const activeReminderCadence =
     reminderPreference?.cadence === "biweekly" ||
     reminderPreference?.cadence === "weekly" ||
@@ -253,28 +258,53 @@ export default function App() {
   const selectedReminderCadence =
     reminderCadence ?? activeReminderCadence ?? "weekly";
 
-  async function handleSaveResult() {
-    if (!isComplete || !isAuthenticated || isSavingResult) {
+  const saveCurrentResult = useCallback(async () => {
+    if (
+      !isComplete ||
+      !isAuthenticated ||
+      savedResultSignature === currentResultSignature ||
+      pendingSaveSignatureRef.current === currentResultSignature
+    ) {
       return;
     }
 
-    setIsSavingResult(true);
-    setSaveError(null);
+    const signatureToSave = currentResultSignature;
+    pendingSaveSignatureRef.current = signatureToSave;
 
     try {
       await saveResult({
         answers: answerValues,
         score,
       });
-      setSavedResultSignature(currentResultSignature);
+      setSavedResultSignature(signatureToSave);
     } catch (error) {
-      setSaveError(
-        error instanceof Error ? error.message : "Could not save this result.",
-      );
+      console.error("Could not save this result.", error);
     } finally {
-      setIsSavingResult(false);
+      if (pendingSaveSignatureRef.current === signatureToSave) {
+        pendingSaveSignatureRef.current = null;
+      }
     }
-  }
+  }, [
+    answerValues,
+    currentResultSignature,
+    isAuthenticated,
+    isComplete,
+    saveResult,
+    savedResultSignature,
+    score,
+  ]);
+
+  useEffect(() => {
+    if (!submitted || isLoading) {
+      return;
+    }
+
+    const saveTimer = window.setTimeout(() => {
+      void saveCurrentResult();
+    }, 0);
+
+    return () => window.clearTimeout(saveTimer);
+  }, [isLoading, saveCurrentResult, submitted]);
 
   async function handleDeleteResult(resultId: Id<"epdsResults">) {
     if (
@@ -433,19 +463,12 @@ export default function App() {
                   Checking sign-in status...
                 </p>
               </section>
-            ) : isAuthenticated ? (
-              <SaveResultPanel
-                isResultSaved={isResultSaved}
-                isSavingResult={isSavingResult}
-                saveError={saveError}
-                onSaveResult={() => void handleSaveResult()}
-              />
-            ) : (
+            ) : !isAuthenticated ? (
               <AuthPrompt
                 description="Your answers stay on this device unless you choose to sign in."
                 title="Log in to save this result"
               />
-            )}
+            ) : null}
           </div>
         )}
 
@@ -461,7 +484,6 @@ export default function App() {
                   [question.id]: optionIndex,
                 }));
                 setSubmitted(false);
-                setSaveError(null);
               }}
             />
           ))}
@@ -480,43 +502,6 @@ export default function App() {
         </form>
       </div>
     </main>
-  );
-}
-
-function SaveResultPanel({
-  isResultSaved,
-  isSavingResult,
-  saveError,
-  onSaveResult,
-}: {
-  isResultSaved: boolean;
-  isSavingResult: boolean;
-  saveError: string | null;
-  onSaveResult: () => void;
-}) {
-  return (
-    <section className="rounded-lg border border-[#d6cec2] bg-white px-4 py-5 shadow-sm sm:px-6">
-      <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#765f45]">
-        Save privately
-      </p>
-      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <button
-          className="min-h-12 rounded-md bg-[#315d47] px-5 py-3 text-base font-bold text-white shadow-sm transition enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#b9b1a8] disabled:text-[#5b554f]"
-          disabled={isResultSaved || isSavingResult}
-          onClick={onSaveResult}
-          type="button"
-        >
-          {isResultSaved
-            ? "Result saved"
-            : isSavingResult
-              ? "Saving..."
-              : "Save this score"}
-        </button>
-        {saveError !== null && (
-          <p className="text-sm font-semibold text-[#8a3324]">{saveError}</p>
-        )}
-      </div>
-    </section>
   );
 }
 
