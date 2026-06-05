@@ -18,7 +18,7 @@ pnpm dev
 
 ## Email reminders
 
-Daily, weekly, and monthly reminders are sent with SendGrid from a Convex cron.
+Biweekly, weekly, and monthly reminders are sent with SendGrid from a Convex cron.
 Configure these Convex environment variables before enabling reminders in
 production:
 

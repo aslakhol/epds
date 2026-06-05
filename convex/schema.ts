@@ -19,6 +19,7 @@ export default defineSchema({
     cadence: v.union(
       v.literal("none"),
       v.literal("daily"),
+      v.literal("biweekly"),
       v.literal("weekly"),
       v.literal("monthly"),
     ),

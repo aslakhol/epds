@@ -131,17 +131,17 @@ const QUESTIONS: EpdsQuestion[] = [
 ];
 
 type Answers = Record<number, number>;
-type ReminderCadence = "daily" | "weekly" | "monthly";
+type ReminderCadence = "biweekly" | "weekly" | "monthly";
 const REMINDER_CADENCE_OPTIONS: Array<{
   label: string;
   value: ReminderCadence;
 }> = [
-  { label: "Daily", value: "daily" },
   { label: "Weekly", value: "weekly" },
+  { label: "Biweekly", value: "biweekly" },
   { label: "Monthly", value: "monthly" },
 ];
 const REMINDER_CADENCE_LABELS: Record<ReminderCadence, string> = {
-  daily: "Daily",
+  biweekly: "Biweekly",
   weekly: "Weekly",
   monthly: "Monthly",
 };
@@ -245,7 +245,7 @@ export default function App() {
   const currentResultSignature = `${score}:${answerValues.join(",")}`;
   const isResultSaved = savedResultSignature === currentResultSignature;
   const activeReminderCadence =
-    reminderPreference?.cadence === "daily" ||
+    reminderPreference?.cadence === "biweekly" ||
     reminderPreference?.cadence === "weekly" ||
     reminderPreference?.cadence === "monthly"
       ? reminderPreference.cadence
