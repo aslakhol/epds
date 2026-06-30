@@ -23,10 +23,42 @@ const REMINDER_CADENCE_OPTIONS: Array<{
   { label: "Every month", value: "monthly" },
 ];
 const REMINDER_CADENCE_LABELS: Record<ReminderCadence, string> = {
-  biweekly: "every 2 weeks",
-  weekly: "every week",
-  monthly: "every month",
+  biweekly: "Every 2 weeks",
+  weekly: "Weekly",
+  monthly: "Monthly",
 };
+
+function ordinal(day: number): string {
+  const remainderTen = day % 10;
+  const remainderHundred = day % 100;
+  if (remainderTen === 1 && remainderHundred !== 11) return `${day}st`;
+  if (remainderTen === 2 && remainderHundred !== 12) return `${day}nd`;
+  if (remainderTen === 3 && remainderHundred !== 13) return `${day}rd`;
+  return `${day}th`;
+}
+
+function describeReminderCadence(
+  cadence: ReminderCadence,
+  nextReminderAt: number | null | undefined,
+): string {
+  if (nextReminderAt === null || nextReminderAt === undefined) {
+    return REMINDER_CADENCE_LABELS[cadence];
+  }
+
+  const date = new Date(nextReminderAt);
+
+  if (cadence === "monthly") {
+    return `Monthly on the ${ordinal(date.getDate())}`;
+  }
+
+  const weekday = date.toLocaleDateString(undefined, { weekday: "long" });
+
+  if (cadence === "biweekly") {
+    return `Every 2 weeks on ${weekday}s`;
+  }
+
+  return `Weekly on ${weekday}s`;
+}
 type SavedResult = {
   _id: Id<"epdsResults">;
   _creationTime: number;
@@ -289,6 +321,7 @@ export default function App() {
         {!isLoading && isAuthenticated && (
           <AccountPanel
             activeReminderCadence={activeReminderCadence}
+            activeReminderNextAt={reminderPreference?.nextReminderAt ?? null}
             deleteError={deleteError}
             isCancellingReminder={isCancellingReminder}
             isDeletingResult={isDeletingResult}
@@ -419,6 +452,7 @@ function ImmediateSupport() {
 
 function AccountPanel({
   activeReminderCadence,
+  activeReminderNextAt,
   deleteError,
   isCancellingReminder,
   isDeletingResult,
@@ -432,6 +466,7 @@ function AccountPanel({
   onSaveReminder,
 }: {
   activeReminderCadence: ReminderCadence | null;
+  activeReminderNextAt: number | null;
   deleteError: string | null;
   isCancellingReminder: boolean;
   isDeletingResult: Id<"epdsResults"> | null;
@@ -476,7 +511,10 @@ function AccountPanel({
             <p className="text-sm text-[#5b554f]">
               {activeReminderCadence === null
                 ? "Email reminders are off."
-                : `We'll email you ${REMINDER_CADENCE_LABELS[activeReminderCadence]}.`}
+                : describeReminderCadence(
+                    activeReminderCadence,
+                    activeReminderNextAt,
+                  )}
             </p>
           </div>
           <p className="mt-2 text-sm leading-6 text-[#5b554f]">
