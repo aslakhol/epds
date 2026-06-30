@@ -24,12 +24,13 @@ production:
 
 ```sh
 SENDGRID_API_KEY=...
-EPDS_APP_URL=https://your-app.example
-SENDGRID_FROM_EMAIL=notifications@your-domain.example
-SENDGRID_FROM_NAME=New parent check-in
+EPDS_APP_URL=https://epds.shera.no
+SENDGRID_FROM_EMAIL=post@shera.no
+SENDGRID_FROM_NAME=Shera
 ```
 
-`SENDGRID_FROM_NAME` is optional and defaults to `New parent check-in`.
+`EPDS_APP_URL`, `SENDGRID_FROM_EMAIL`, and `SENDGRID_FROM_NAME` are optional if
+the defaults are correct.
 
 ## Vercel deployment
 

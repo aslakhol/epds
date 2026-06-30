@@ -390,7 +390,8 @@ export default function App() {
           </h1>
           <p className="mt-3 max-w-2xl text-base leading-7 text-[#5b554f]">
             Take a moment to check in with how you've felt over the past 7 days.
-            There are 10 questions, and you don't need an account to begin.
+            This 10-question check-in uses the Edinburgh Postnatal Depression
+            Scale (EPDS), and you don't need an account to begin.
           </p>
           {!isLoading && !isAuthenticated && !submitted && (
             <button

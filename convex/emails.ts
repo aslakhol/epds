@@ -4,7 +4,9 @@ import { internalAction } from "./_generated/server";
 declare const process: { env: Record<string, string | undefined> };
 
 const SENDGRID_MAIL_SEND_URL = "https://api.sendgrid.com/v3/mail/send";
-const DEFAULT_FROM_NAME = "New parent check-in";
+const DEFAULT_FROM_EMAIL = "post@shera.no";
+const DEFAULT_FROM_NAME = "Shera";
+const DEFAULT_APP_URL = "https://epds.shera.no";
 
 export const sendReminderEmail = internalAction({
   args: {
@@ -16,16 +18,8 @@ export const sendReminderEmail = internalAction({
       throw new Error("SENDGRID_API_KEY is not configured");
     }
 
-    const appUrl = process.env.EPDS_APP_URL;
-    if (appUrl === undefined) {
-      throw new Error("EPDS_APP_URL is not configured");
-    }
-
-    const fromEmail = process.env.SENDGRID_FROM_EMAIL;
-    if (fromEmail === undefined) {
-      throw new Error("SENDGRID_FROM_EMAIL is not configured");
-    }
-
+    const appUrl = process.env.EPDS_APP_URL ?? DEFAULT_APP_URL;
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL ?? DEFAULT_FROM_EMAIL;
     const fromName = process.env.SENDGRID_FROM_NAME ?? DEFAULT_FROM_NAME;
 
     const response = await fetch(SENDGRID_MAIL_SEND_URL, {
