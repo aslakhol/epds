@@ -374,7 +374,24 @@ export default function App() {
           </div>
         )}
 
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <form
+          aria-labelledby="questionnaire-timeframe"
+          className="flex flex-col gap-4"
+          onSubmit={handleSubmit}
+        >
+          <div className="px-1 pt-1">
+            <h2
+              className="text-xl font-bold leading-7 text-[#23201d]"
+              id="questionnaire-timeframe"
+            >
+              In the past 7 days:
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-[#5b554f]">
+              Please check the answer that comes closest to how you have felt,
+              not just how you feel today.
+            </p>
+          </div>
+
           {QUESTIONS.map((question) => (
             <QuestionField
               key={question.id}
