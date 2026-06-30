@@ -298,7 +298,7 @@ export default function App() {
           <p className="mt-3 max-w-2xl text-base leading-7 text-[#5b554f]">
             Take a moment to check in with how you've felt over the past 7 days.
             This check-in is based on the Edinburgh Postnatal Depression Scale
-            (EPDS). You don't need an account to begin.
+            (EPDS).
           </p>
           {!isLoading && !isAuthenticated && !submitted && (
             <button
