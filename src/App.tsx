@@ -406,6 +406,15 @@ export default function App() {
             </button>
           </div>
         </form>
+
+        <footer className="px-1 pb-4 text-xs leading-5 text-[#6f6861]">
+          <p>
+            Edinburgh Postnatal Depression Scale (EPDS). Source: Cox, J.L.,
+            Holden, J.M., and Sagovsky, R. (1987). “Detection of postnatal
+            depression: Development of the 10-item Edinburgh Postnatal
+            Depression Scale.” British Journal of Psychiatry, 150, 782–786.
+          </p>
+        </footer>
       </div>
     </main>
   );
