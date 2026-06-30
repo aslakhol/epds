@@ -196,26 +196,26 @@ function getAuthErrorMessage(error: unknown, authMode: "signIn" | "signUp") {
 }
 
 function getScoreInterpretation(score: number) {
-  if (score >= 20) {
+  if (score >= 13) {
     return {
-      label: "More serious signal",
+      label: "Please talk to a healthcare professional",
       description:
-        "A score of 20 or more is described as signaling a more serious depression concern.",
+        "Your answers suggest you may need more support. Contact your doctor, midwife, or public health nurse soon.",
     };
   }
 
   if (score >= 10) {
     return {
-      label: "Mild-depression signal",
+      label: "Consider checking in with someone",
       description:
-        "Doctors typically use a cutoff of 10 or 12 as a signal of mild depression.",
+        "Your answers suggest you've been having a difficult time. Talk to your doctor, midwife, or public health nurse, and consider checking in again in 2 to 4 weeks.",
     };
   }
 
   return {
-    label: "Below common cutoff",
+    label: "No extra support suggested right now",
     description:
-      "This total is below the common 10 to 12 cutoff described for mild depression screening.",
+      "If something doesn't feel right, you can still talk to your doctor, midwife, or public health nurse.",
   };
 }
 
@@ -249,6 +249,9 @@ export default function App() {
   const isComplete = answeredCount === QUESTIONS.length;
   const score = useMemo(() => calculateScore(answers), [answers]);
   const scoreInterpretation = getScoreInterpretation(score);
+  const selfHarmScore =
+    QUESTIONS.find((question) => question.id === 10)?.options[answers[10]]
+      ?.score ?? 0;
   const answerValues = useMemo(() => answersToArray(answers), [answers]);
   const currentResultSignature = `${score}:${answerValues.join(",")}`;
   const activeReminderCadence =
@@ -431,18 +434,21 @@ export default function App() {
               className="rounded-lg border border-[#244736] bg-[#315d47] px-4 py-5 text-white shadow-sm sm:px-6"
             >
               <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#d8ead5]">
-                Score
+                Your result
               </p>
-              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-4">
-                <p className="text-5xl font-bold">{score}</p>
-                <p className="pb-1 text-lg font-semibold text-[#eef6ec]">
-                  {scoreInterpretation.label}
-                </p>
-              </div>
-              <p className="mt-2 text-sm leading-6 text-[#eef6ec]">
-                Out of 30. {scoreInterpretation.description}
+              <h2 className="mt-2 text-2xl font-bold leading-8">
+                {scoreInterpretation.label}
+              </h2>
+              <p className="mt-2 text-base leading-7 text-[#eef6ec]">
+                {scoreInterpretation.description}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-[#d8ead5]">
+                Your score is {score} out of 30. This check-in cannot diagnose
+                depression.
               </p>
             </section>
+
+            {selfHarmScore > 0 && <ImmediateSupport />}
 
             {isLoading ? (
               <section className="rounded-lg border border-[#d6cec2] bg-white px-4 py-5 shadow-sm sm:px-6">
@@ -493,6 +499,45 @@ export default function App() {
         </form>
       </div>
     </main>
+  );
+}
+
+function ImmediateSupport() {
+  return (
+    <section
+      className="rounded-lg border-2 border-[#8a3324] bg-[#fff7f4] px-4 py-5 text-[#3f1e18] shadow-sm sm:px-6"
+      role="alert"
+    >
+      <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#8a3324]">
+        Support is available
+      </p>
+      <h2 className="mt-1 text-2xl font-bold leading-8">
+        Please reach out now
+      </h2>
+      <p className="mt-2 text-base leading-7">
+        You said you've had thoughts of harming yourself. Tell someone you trust
+        and contact a healthcare professional today.
+      </p>
+      <p className="mt-3 text-base leading-7">
+        If you might act on these thoughts or you're in immediate danger, call{" "}
+        <a className="font-bold underline" href="tel:113">
+          113
+        </a>{" "}
+        now. If it cannot wait for your doctor, call{" "}
+        <a className="font-bold underline" href="tel:116117">
+          116 117
+        </a>
+        . You can also call Mental Helse on{" "}
+        <a className="font-bold underline" href="tel:116123">
+          116 123
+        </a>{" "}
+        to talk to someone.
+      </p>
+      <p className="mt-3 text-sm leading-6 text-[#6b3127]">
+        These numbers are for Norway. If you're elsewhere, call your local
+        emergency number.
+      </p>
+    </section>
   );
 }
 
