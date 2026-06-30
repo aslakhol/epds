@@ -1,7 +1,7 @@
 {
-  "name": "EPDS Score Tool",
-  "short_name": "EPDS",
-  "description": "A private Edinburgh Postnatal Depression Scale scoring tool.",
+  "name": "Shera check-in",
+  "short_name": "Shera",
+  "description": "A 10-question check-in for new parents about how they have felt over the past week.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f7f3ed",
