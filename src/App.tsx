@@ -289,10 +289,7 @@ export default function App() {
     <main className="min-h-screen bg-[#f7f3ed] text-[#23201d]">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-8">
         <section className="rounded-lg border border-[#d6cec2] bg-white px-4 py-5 shadow-sm sm:px-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#765f45]">
-            A quick check-in
-          </p>
-          <h1 className="mt-2 text-3xl font-bold leading-tight sm:text-4xl">
+          <h1 className="text-3xl font-bold leading-tight sm:text-4xl">
             How have you been feeling?
           </h1>
           <p className="mt-3 max-w-2xl text-base leading-7 text-[#5b554f]">
@@ -512,10 +509,7 @@ function AccountPanel({
     <section className="rounded-lg border border-[#d6cec2] bg-white px-4 py-5 shadow-sm sm:px-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#765f45]">
-            Your account
-          </p>
-          <h2 className="mt-1 text-xl font-bold leading-7">
+          <h2 className="text-xl font-bold leading-7">
             Past check-ins and reminders
           </h2>
         </div>
