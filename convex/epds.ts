@@ -118,7 +118,7 @@ export const listMyResults = query({
       .query("epdsResults")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .order("desc")
-      .take(20);
+      .take(50);
 
     return results.map((result) => ({
       _id: result._id,

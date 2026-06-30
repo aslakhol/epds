@@ -4,6 +4,7 @@ import {
   FormEvent,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -64,6 +65,22 @@ type SavedResult = {
   _creationTime: number;
   score: number;
 };
+
+const SCORE_CHART = {
+  height: 240,
+  left: 36,
+  right: 14,
+  top: 16,
+  bottom: 42,
+  width: 640,
+} as const;
+
+function formatChartDate(timestamp: number) {
+  return new Date(timestamp).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+  });
+}
 
 function calculateScore(answers: Answers) {
   return QUESTIONS.reduce((total, question) => {
@@ -473,6 +490,153 @@ function ImmediateSupport() {
   );
 }
 
+function ScoreChart({ results }: { results: SavedResult[] }) {
+  const titleId = useId();
+  const descriptionId = useId();
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const [chartWidth, setChartWidth] = useState<number>(SCORE_CHART.width);
+  const chronologicalResults = [...results].sort(
+    (first, second) => first._creationTime - second._creationTime,
+  );
+  const plotWidth = chartWidth - SCORE_CHART.left - SCORE_CHART.right;
+  const plotHeight = SCORE_CHART.height - SCORE_CHART.top - SCORE_CHART.bottom;
+  const xForIndex = (index: number) =>
+    chronologicalResults.length === 1
+      ? SCORE_CHART.left + plotWidth / 2
+      : SCORE_CHART.left +
+        (index / (chronologicalResults.length - 1)) * plotWidth;
+  const yForScore = (score: number) =>
+    SCORE_CHART.top +
+    ((30 - Math.max(0, Math.min(30, score))) / 30) * plotHeight;
+  const points = chronologicalResults
+    .map((result, index) => `${xForIndex(index)},${yForScore(result.score)}`)
+    .join(" ");
+  const firstResult = chronologicalResults[0];
+  const lastResult = chronologicalResults[chronologicalResults.length - 1];
+  const dateLabelY = SCORE_CHART.height - 13;
+  const yTicks = [30, 20, 10, 0];
+
+  useEffect(() => {
+    const container = chartContainerRef.current;
+    if (container === null) {
+      return;
+    }
+
+    const updateChartWidth = () => {
+      setChartWidth(Math.max(280, container.clientWidth));
+    };
+    const resizeObserver = new ResizeObserver(updateChartWidth);
+
+    updateChartWidth();
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  return (
+    <figure className="mt-3 rounded-md border border-[#e5ddd2] bg-[#fbfaf8] p-3">
+      <figcaption className="flex items-baseline justify-between gap-3">
+        <span className="font-bold text-[#23201d]">Score over time</span>
+        <span className="text-xs text-[#6f6861]">
+          {results.length} {results.length === 1 ? "check-in" : "check-ins"}
+        </span>
+      </figcaption>
+      <div ref={chartContainerRef}>
+        <svg
+          aria-describedby={descriptionId}
+          aria-labelledby={titleId}
+          className="mt-2 block h-auto w-full"
+          role="img"
+          viewBox={`0 0 ${chartWidth} ${SCORE_CHART.height}`}
+        >
+          <title id={titleId}>EPDS scores over time</title>
+          <desc id={descriptionId}>
+            Scores from zero to thirty, ordered from oldest to newest.
+          </desc>
+
+          {yTicks.map((tick) => {
+            const y = yForScore(tick);
+
+            return (
+              <g key={tick}>
+                <line
+                  stroke={tick === 0 ? "#b8afa4" : "#ded7ce"}
+                  strokeWidth="1"
+                  x1={SCORE_CHART.left}
+                  x2={chartWidth - SCORE_CHART.right}
+                  y1={y}
+                  y2={y}
+                />
+                <text
+                  fill="#6f6861"
+                  fontSize="12"
+                  textAnchor="end"
+                  x={SCORE_CHART.left - 8}
+                  y={y + 4}
+                >
+                  {tick}
+                </text>
+              </g>
+            );
+          })}
+
+          {chronologicalResults.length > 1 && (
+            <polyline
+              fill="none"
+              points={points}
+              stroke="#315d47"
+              strokeLinejoin="round"
+              strokeWidth="3"
+            />
+          )}
+
+          {chronologicalResults.map((result, index) => (
+            <circle
+              cx={xForIndex(index)}
+              cy={yForScore(result.score)}
+              fill="#ffffff"
+              key={result._id}
+              r="5"
+              stroke="#315d47"
+              strokeWidth="3"
+            >
+              <title>
+                {new Date(result._creationTime).toLocaleString()}:{" "}
+                {result.score} out of 30
+              </title>
+            </circle>
+          ))}
+
+          {firstResult !== undefined && (
+            <text
+              fill="#6f6861"
+              fontSize="12"
+              textAnchor={
+                chronologicalResults.length === 1 ? "middle" : "start"
+              }
+              x={xForIndex(0)}
+              y={dateLabelY}
+            >
+              {formatChartDate(firstResult._creationTime)}
+            </text>
+          )}
+          {lastResult !== undefined && chronologicalResults.length > 1 && (
+            <text
+              fill="#6f6861"
+              fontSize="12"
+              textAnchor="end"
+              x={xForIndex(chronologicalResults.length - 1)}
+              y={dateLabelY}
+            >
+              {formatChartDate(lastResult._creationTime)}
+            </text>
+          )}
+        </svg>
+      </div>
+    </figure>
+  );
+}
+
 function AccountPanel({
   activeReminderCadence,
   activeReminderNextAt,
@@ -600,29 +764,34 @@ function AccountPanel({
               Loading your check-ins...
             </p>
           ) : hasResults ? (
-            <ol className="mt-2 flex flex-col gap-2">
-              {recentResults.map((result) => (
-                <li
-                  className="flex flex-col gap-2 rounded-md bg-[#fbfaf8] px-3 py-2 text-sm text-[#3b3631] sm:flex-row sm:items-center sm:justify-between"
-                  key={result._id}
-                >
-                  <span>{new Date(result._creationTime).toLocaleString()}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold">{result.score}/30</span>
-                    <button
-                      className="min-h-9 rounded-md border border-[#d6cec2] px-3 py-1 text-sm font-semibold text-[#7a2e22] transition enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:text-[#8d867f]"
-                      disabled={isDeletingResult === result._id}
-                      onClick={() => onDeleteResult(result._id)}
-                      type="button"
-                    >
-                      {isDeletingResult === result._id
-                        ? "Deleting..."
-                        : "Delete result"}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <>
+              <ScoreChart results={recentResults} />
+              <ol className="mt-3 flex flex-col gap-2">
+                {recentResults.map((result) => (
+                  <li
+                    className="flex flex-col gap-2 rounded-md bg-[#fbfaf8] px-3 py-2 text-sm text-[#3b3631] sm:flex-row sm:items-center sm:justify-between"
+                    key={result._id}
+                  >
+                    <span>
+                      {new Date(result._creationTime).toLocaleString()}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold">{result.score}/30</span>
+                      <button
+                        className="min-h-9 rounded-md border border-[#d6cec2] px-3 py-1 text-sm font-semibold text-[#7a2e22] transition enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:text-[#8d867f]"
+                        disabled={isDeletingResult === result._id}
+                        onClick={() => onDeleteResult(result._id)}
+                        type="button"
+                      >
+                        {isDeletingResult === result._id
+                          ? "Deleting..."
+                          : "Delete result"}
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </>
           ) : (
             <p className="mt-2 text-sm leading-6 text-[#5b554f]">
               Your past check-ins will appear here.
