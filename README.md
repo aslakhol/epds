@@ -24,13 +24,14 @@ production:
 
 ```sh
 SENDGRID_API_KEY=...
-EPDS_APP_URL=https://your-app.example
+EPDS_APP_URL=https://epds.shera.no
 SENDGRID_FROM_EMAIL=post@shera.no
 SENDGRID_FROM_NAME=Shera
 ```
 
-`SENDGRID_FROM_EMAIL` and `SENDGRID_FROM_NAME` are optional if the defaults are
-correct.
+The app defaults to the values shown for `EPDS_APP_URL`, `SENDGRID_FROM_EMAIL`,
+and `SENDGRID_FROM_NAME`. Override them only when a deployment uses different
+values.
 
 ## Vercel deployment
 

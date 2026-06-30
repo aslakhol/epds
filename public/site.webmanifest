@@ -1,7 +1,7 @@
 {
-  "name": "EPDS Score Tool",
-  "short_name": "EPDS",
-  "description": "A private Edinburgh Postnatal Depression Scale scoring tool.",
+  "name": "New parent check-in",
+  "short_name": "Check-in",
+  "description": "A check-in for new parents based on the Edinburgh Postnatal Depression Scale (EPDS).",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f7f3ed",

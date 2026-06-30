@@ -143,14 +143,14 @@ const REMINDER_CADENCE_OPTIONS: Array<{
   label: string;
   value: ReminderCadence;
 }> = [
-  { label: "Weekly", value: "weekly" },
-  { label: "Biweekly", value: "biweekly" },
-  { label: "Monthly", value: "monthly" },
+  { label: "Every week", value: "weekly" },
+  { label: "Every 2 weeks", value: "biweekly" },
+  { label: "Every month", value: "monthly" },
 ];
 const REMINDER_CADENCE_LABELS: Record<ReminderCadence, string> = {
-  biweekly: "Biweekly",
-  weekly: "Weekly",
-  monthly: "Monthly",
+  biweekly: "every 2 weeks",
+  weekly: "every week",
+  monthly: "every month",
 };
 type SavedResult = {
   _id: Id<"epdsResults">;
@@ -171,14 +171,14 @@ function answersToArray(answers: Answers) {
 
 function getAuthErrorMessage(error: unknown, authMode: "signIn" | "signUp") {
   const defaultSignInMessage =
-    "Could not sign in. Check your email and password, or create an account if this is your first time here.";
+    "We couldn't sign you in. Check your email and password, then try again.";
   const invalidCredentialsMessage =
-    "We could not find an account for that email and password. Check the email address, or create an account if this is your first time here.";
+    "We couldn't sign you in with that email and password.";
 
   if (!(error instanceof Error)) {
     return authMode === "signIn"
       ? defaultSignInMessage
-      : "Could not create your account.";
+      : "We couldn't create your account. Check your details and try again.";
   }
 
   if (
@@ -190,30 +190,32 @@ function getAuthErrorMessage(error: unknown, authMode: "signIn" | "signUp") {
     return invalidCredentialsMessage;
   }
 
-  return error.message;
+  return authMode === "signIn"
+    ? defaultSignInMessage
+    : "We couldn't create your account. Check your details and try again.";
 }
 
 function getScoreInterpretation(score: number) {
-  if (score >= 20) {
+  if (score >= 13) {
     return {
-      label: "More serious signal",
+      label: "Please talk to a healthcare professional",
       description:
-        "A score of 20 or more is described as signaling a more serious depression concern.",
+        "Your answers suggest you may need more support. Contact your doctor, midwife, or public health nurse soon.",
     };
   }
 
   if (score >= 10) {
     return {
-      label: "Mild-depression signal",
+      label: "Consider checking in with someone",
       description:
-        "Doctors typically use a cutoff of 10 or 12 as a signal of mild depression.",
+        "Your answers suggest you've been having a difficult time. Talk to your doctor, midwife, or public health nurse, and consider checking in again in 2 to 4 weeks.",
     };
   }
 
   return {
-    label: "Below common cutoff",
+    label: "No extra support suggested right now",
     description:
-      "This total is below the common 10 to 12 cutoff described for mild depression screening.",
+      "If something doesn't feel right, you can still talk to your doctor, midwife, or public health nurse.",
   };
 }
 
@@ -247,6 +249,9 @@ export default function App() {
   const isComplete = answeredCount === QUESTIONS.length;
   const score = useMemo(() => calculateScore(answers), [answers]);
   const scoreInterpretation = getScoreInterpretation(score);
+  const selfHarmScore =
+    QUESTIONS.find((question) => question.id === 10)?.options[answers[10]]
+      ?.score ?? 0;
   const answerValues = useMemo(() => answersToArray(answers), [answers]);
   const currentResultSignature = `${score}:${answerValues.join(",")}`;
   const activeReminderCadence =
@@ -309,7 +314,7 @@ export default function App() {
   async function handleDeleteResult(resultId: Id<"epdsResults">) {
     if (
       isDeletingResult !== null ||
-      !window.confirm("Delete this saved score?")
+      !window.confirm("Delete this result? This cannot be undone.")
     ) {
       return;
     }
@@ -319,10 +324,8 @@ export default function App() {
 
     try {
       await deleteResult({ resultId });
-    } catch (error) {
-      setDeleteError(
-        error instanceof Error ? error.message : "Could not delete this score.",
-      );
+    } catch {
+      setDeleteError("We couldn't delete this result. Please try again.");
     } finally {
       setIsDeletingResult(null);
     }
@@ -338,22 +341,15 @@ export default function App() {
 
     try {
       await setReminderPreference({ cadence: selectedReminderCadence });
-    } catch (error) {
-      setReminderError(
-        error instanceof Error
-          ? error.message
-          : "Could not save reminder settings.",
-      );
+    } catch {
+      setReminderError("We couldn't save your reminder. Please try again.");
     } finally {
       setIsSavingReminder(false);
     }
   }
 
   async function handleCancelReminder() {
-    if (
-      isCancellingReminder ||
-      !window.confirm("Cancel reminders for this account?")
-    ) {
+    if (isCancellingReminder || !window.confirm("Turn off email reminders?")) {
       return;
     }
 
@@ -363,10 +359,8 @@ export default function App() {
     try {
       await deleteReminderPreference({});
       setReminderCadence(null);
-    } catch (error) {
-      setReminderError(
-        error instanceof Error ? error.message : "Could not cancel reminders.",
-      );
+    } catch {
+      setReminderError("We couldn't turn off reminders. Please try again.");
     } finally {
       setIsCancellingReminder(false);
     }
@@ -389,18 +383,15 @@ export default function App() {
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-8">
         <section className="rounded-lg border border-[#d6cec2] bg-white px-4 py-5 shadow-sm sm:px-6">
           <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#765f45]">
-            In the past 7 days
+            A quick check-in
           </p>
           <h1 className="mt-2 text-3xl font-bold leading-tight sm:text-4xl">
-            Edinburgh Postnatal Depression Scale
+            How have you been feeling?
           </h1>
           <p className="mt-3 max-w-2xl text-base leading-7 text-[#5b554f]">
-            Answer each question, then submit to see your score. You can use the
-            form before logging in.
-          </p>
-          <p className="mt-3 rounded-md border border-[#d6cec2] bg-[#fffdf9] px-3 py-2 text-sm leading-6 text-[#5b554f]">
-            Each answer scores 0 to 3. Questions 1, 2, and 4 score left to
-            right; questions 3 and 5 through 10 score right to left.
+            Take a moment to check in with how you've felt over the past 7 days.
+            This check-in is based on the Edinburgh Postnatal Depression Scale
+            (EPDS). You don't need an account to begin.
           </p>
           {!isLoading && !isAuthenticated && !submitted && (
             <button
@@ -408,15 +399,15 @@ export default function App() {
               onClick={() => setShowAuthPanel((current) => !current)}
               type="button"
             >
-              {showAuthPanel ? "Hide sign in" : "Sign in"}
+              {showAuthPanel ? "Close sign-in" : "Sign in"}
             </button>
           )}
         </section>
 
         {!isLoading && !isAuthenticated && showAuthPanel && !submitted && (
           <AuthPrompt
-            description="Sign in to see saved scores and manage reminders."
-            title="Sign in"
+            description="Sign in to see your past check-ins and manage email reminders."
+            title="Your account"
           />
         )}
 
@@ -444,18 +435,21 @@ export default function App() {
               className="rounded-lg border border-[#244736] bg-[#315d47] px-4 py-5 text-white shadow-sm sm:px-6"
             >
               <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#d8ead5]">
-                Score
+                Your result
               </p>
-              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-4">
-                <p className="text-5xl font-bold">{score}</p>
-                <p className="pb-1 text-lg font-semibold text-[#eef6ec]">
-                  {scoreInterpretation.label}
-                </p>
-              </div>
-              <p className="mt-2 text-sm leading-6 text-[#eef6ec]">
-                Out of 30. {scoreInterpretation.description}
+              <h2 className="mt-2 text-2xl font-bold leading-8">
+                {scoreInterpretation.label}
+              </h2>
+              <p className="mt-2 text-base leading-7 text-[#eef6ec]">
+                {scoreInterpretation.description}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-[#d8ead5]">
+                Your score is {score} out of 30. This check-in cannot diagnose
+                depression.
               </p>
             </section>
+
+            {selfHarmScore > 0 && <ImmediateSupport />}
 
             {isLoading ? (
               <section className="rounded-lg border border-[#d6cec2] bg-white px-4 py-5 shadow-sm sm:px-6">
@@ -465,8 +459,8 @@ export default function App() {
               </section>
             ) : !isAuthenticated ? (
               <AuthPrompt
-                description="Your answers stay on this device unless you choose to sign in."
-                title="Log in to save this result"
+                description="Your result hasn't been saved. Sign in or create an account to keep it and compare future check-ins."
+                title="Save this result"
               />
             ) : null}
           </div>
@@ -489,19 +483,62 @@ export default function App() {
           ))}
 
           <div className="pb-4 pt-2">
+            <p
+              aria-live="polite"
+              className="mb-2 text-sm font-semibold text-[#5b554f]"
+            >
+              {answeredCount} of {QUESTIONS.length} answered
+            </p>
             <button
               className="min-h-14 w-full rounded-md bg-[#315d47] px-5 py-3 text-base font-bold text-white shadow-sm transition enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#b9b1a8] disabled:text-[#5b554f] sm:w-auto"
               disabled={!isComplete}
               type="submit"
             >
-              {isComplete
-                ? "Show score"
-                : `Answer ${QUESTIONS.length - answeredCount} more`}
+              See my result
             </button>
           </div>
         </form>
       </div>
     </main>
+  );
+}
+
+function ImmediateSupport() {
+  return (
+    <section
+      className="rounded-lg border-2 border-[#8a3324] bg-[#fff7f4] px-4 py-5 text-[#3f1e18] shadow-sm sm:px-6"
+      role="alert"
+    >
+      <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#8a3324]">
+        Support is available
+      </p>
+      <h2 className="mt-1 text-2xl font-bold leading-8">
+        Please reach out now
+      </h2>
+      <p className="mt-2 text-base leading-7">
+        You said you've had thoughts of harming yourself. Tell someone you trust
+        and contact a healthcare professional today.
+      </p>
+      <p className="mt-3 text-base leading-7">
+        If you might act on these thoughts or you're in immediate danger, call{" "}
+        <a className="font-bold underline" href="tel:113">
+          113
+        </a>{" "}
+        now. If it cannot wait for your doctor, call{" "}
+        <a className="font-bold underline" href="tel:116117">
+          116 117
+        </a>
+        . You can also call Mental Helse on{" "}
+        <a className="font-bold underline" href="tel:116123">
+          116 123
+        </a>{" "}
+        to talk to someone.
+      </p>
+      <p className="mt-3 text-sm leading-6 text-[#6b3127]">
+        These numbers are for Norway. If you're elsewhere, call your local
+        emergency number.
+      </p>
+    </section>
   );
 }
 
@@ -540,10 +577,10 @@ function AccountPanel({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#765f45]">
-            Account
+            Your account
           </p>
           <h2 className="mt-1 text-xl font-bold leading-7">
-            Saved scores and reminders
+            Past check-ins and reminders
           </h2>
         </div>
         <button
@@ -558,15 +595,20 @@ function AccountPanel({
       <div className="mt-5 grid gap-5">
         <div>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-            <h3 className="text-base font-bold text-[#23201d]">Reminders</h3>
+            <h3 className="text-base font-bold text-[#23201d]">
+              Email reminders
+            </h3>
             <p className="text-sm text-[#5b554f]">
               {activeReminderCadence === null
-                ? "No reminder is set."
-                : `${REMINDER_CADENCE_LABELS[activeReminderCadence]} reminder set.`}
+                ? "Email reminders are off."
+                : `We'll email you ${REMINDER_CADENCE_LABELS[activeReminderCadence]}.`}
             </p>
           </div>
+          <p className="mt-2 text-sm leading-6 text-[#5b554f]">
+            Get an email when it's time to check in again.
+          </p>
           <fieldset className="mt-3">
-            <legend className="sr-only">Reminder cadence</legend>
+            <legend className="sr-only">How often should we email you?</legend>
             <div className="grid gap-2 sm:grid-cols-3">
               {REMINDER_CADENCE_OPTIONS.map((option) => (
                 <label
@@ -581,9 +623,7 @@ function AccountPanel({
                     checked={reminderCadence === option.value}
                     className="sr-only"
                     name="reminderCadence"
-                    onChange={() =>
-                      onReminderCadenceChange(option.value)
-                    }
+                    onChange={() => onReminderCadenceChange(option.value)}
                     type="radio"
                   />
                   {option.label}
@@ -598,7 +638,11 @@ function AccountPanel({
               onClick={onSaveReminder}
               type="button"
             >
-              {isSavingReminder ? "Saving..." : "Save reminder"}
+              {isSavingReminder
+                ? "Saving..."
+                : activeReminderCadence === null
+                  ? "Turn on reminders"
+                  : "Update reminders"}
             </button>
             <button
               className="min-h-11 rounded-md border border-[#d6cec2] px-4 py-2 text-sm font-semibold text-[#3b3631] transition enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:text-[#8d867f]"
@@ -606,7 +650,7 @@ function AccountPanel({
               onClick={onCancelReminder}
               type="button"
             >
-              {isCancellingReminder ? "Cancelling..." : "Cancel reminders"}
+              {isCancellingReminder ? "Turning off..." : "Turn off reminders"}
             </button>
             {reminderError !== null && (
               <p className="text-sm font-semibold text-[#8a3324]">
@@ -617,10 +661,10 @@ function AccountPanel({
         </div>
 
         <div className="border-t border-[#e5ddd2] pt-4">
-          <h3 className="text-base font-bold text-[#23201d]">Saved scores</h3>
+          <h3 className="text-base font-bold text-[#23201d]">Past check-ins</h3>
           {recentResults === undefined ? (
             <p className="mt-2 text-sm leading-6 text-[#5b554f]">
-              Loading scores...
+              Loading your check-ins...
             </p>
           ) : hasResults ? (
             <ol className="mt-2 flex flex-col gap-2">
@@ -638,7 +682,9 @@ function AccountPanel({
                       onClick={() => onDeleteResult(result._id)}
                       type="button"
                     >
-                      {isDeletingResult === result._id ? "Deleting..." : "Delete"}
+                      {isDeletingResult === result._id
+                        ? "Deleting..."
+                        : "Delete result"}
                     </button>
                   </div>
                 </li>
@@ -646,7 +692,7 @@ function AccountPanel({
             </ol>
           ) : (
             <p className="mt-2 text-sm leading-6 text-[#5b554f]">
-              No saved scores yet.
+              Your past check-ins will appear here.
             </p>
           )}
           {deleteError !== null && (
@@ -751,6 +797,11 @@ function AuthPrompt({
             type="password"
             value={password}
           />
+          {authMode === "signUp" && (
+            <span className="font-normal text-[#5b554f]">
+              Use at least 8 characters.
+            </span>
+          )}
         </label>
 
         {authError !== null && (
@@ -763,7 +814,9 @@ function AuthPrompt({
           type="submit"
         >
           {isSubmittingAuth
-            ? "Working..."
+            ? authMode === "signIn"
+              ? "Signing in..."
+              : "Creating account..."
             : authMode === "signIn"
               ? "Sign in"
               : "Create account"}
@@ -793,9 +846,7 @@ function QuestionField({
         className="border-b border-[#e5ddd2] bg-[#fffdf9] px-4 py-3 text-base font-bold leading-6 text-[#23201d] sm:px-5"
         id={headingId}
       >
-        <span className="mr-1">{question.id}.</span>
-        {" "}
-        {question.text}
+        <span className="mr-1">{question.id}.</span> {question.text}
       </h2>
       <div
         aria-labelledby={headingId}
