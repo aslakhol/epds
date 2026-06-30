@@ -28,19 +28,22 @@ export const sendReminderEmail = internalAction({
           {
             type: "text/plain",
             value: [
-              "It is time for your saved epds check-in.",
+              "How have you been feeling this week?",
               "",
-              `Open the app here: ${appUrl}`,
+              "Take a few minutes for a quick check-in.",
               "",
-              "You can cancel these reminders from your account.",
+              `Start your check-in: ${appUrl}`,
+              "",
+              "You're receiving this because you turned on email reminders. You can change or turn them off in your account.",
             ].join("\n"),
           },
           {
             type: "text/html",
             value: [
-              "<p>It is time for your saved epds check-in.</p>",
-              `<p><a href="${escapeHtml(appUrl)}">Open the app</a></p>`,
-              "<p>You can cancel these reminders from your account.</p>",
+              "<p>How have you been feeling this week?</p>",
+              "<p>Take a few minutes for a quick check-in.</p>",
+              `<p><a href="${escapeHtml(appUrl)}">Start your check-in</a></p>`,
+              "<p>You're receiving this because you turned on email reminders. You can change or turn them off in your account.</p>",
             ].join(""),
           },
         ],
@@ -53,7 +56,7 @@ export const sendReminderEmail = internalAction({
             to: [{ email: args.to }],
           },
         ],
-        subject: "Your epds check-in reminder",
+        subject: "Time for a quick check-in",
       }),
       headers: {
         Authorization: `Bearer ${apiKey}`,
