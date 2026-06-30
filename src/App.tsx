@@ -668,25 +668,58 @@ function AccountPanel({
 }) {
   const { signOut } = useAuthActions();
   const hasResults = recentResults !== undefined && recentResults.length > 0;
+  const checkInSummary =
+    recentResults === undefined
+      ? "Loading check-ins..."
+      : `${recentResults.length} past ${
+          recentResults.length === 1 ? "check-in" : "check-ins"
+        }`;
+  const reminderSummary =
+    activeReminderCadence === null
+      ? "Reminders off"
+      : describeReminderCadence(activeReminderCadence, activeReminderNextAt);
 
   return (
-    <section className="rounded-lg border border-[#d6cec2] bg-white px-4 py-5 shadow-sm sm:px-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <details className="group overflow-hidden rounded-lg border border-[#d6cec2] bg-white shadow-sm">
+      <summary className="flex min-h-20 cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 transition hover:bg-[#fbfaf8] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#315d47] sm:px-6 [&::-webkit-details-marker]:hidden">
         <div>
-          <h2 className="text-xl font-bold leading-7">
-            Past check-ins and reminders
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#765f45]">
+            Signed in
+          </p>
+          <h2 className="mt-0.5 text-lg font-bold leading-7">
+            Your check-ins and reminders
           </h2>
+          <p className="mt-1 text-sm leading-5 text-[#5b554f]">
+            {checkInSummary} <span aria-hidden="true">·</span> {reminderSummary}
+          </p>
         </div>
-        <button
-          className="min-h-10 rounded-md border border-[#d6cec2] px-3 py-2 text-sm font-semibold text-[#3b3631] transition active:scale-[0.99]"
-          onClick={() => void signOut()}
-          type="button"
+        <svg
+          aria-hidden="true"
+          className="h-5 w-5 shrink-0 text-[#5b554f] transition-transform duration-200 group-open:rotate-180"
+          fill="none"
+          viewBox="0 0 20 20"
         >
-          Sign out
-        </button>
-      </div>
+          <path
+            d="m5 7.5 5 5 5-5"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.75"
+          />
+        </svg>
+      </summary>
 
-      <div className="mt-5 grid gap-5">
+      <div className="grid gap-5 border-t border-[#e5ddd2] px-4 py-5 sm:px-6">
+        <div className="flex justify-end">
+          <button
+            className="min-h-10 rounded-md border border-[#d6cec2] px-3 py-2 text-sm font-semibold text-[#3b3631] transition active:scale-[0.99]"
+            onClick={() => void signOut()}
+            type="button"
+          >
+            Sign out
+          </button>
+        </div>
+
         <div>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
             <h3 className="text-base font-bold text-[#23201d]">
@@ -804,7 +837,7 @@ function AccountPanel({
           )}
         </div>
       </div>
-    </section>
+    </details>
   );
 }
 
