@@ -1,7 +1,7 @@
 {
   "name": "New parent check-in",
   "short_name": "Check-in",
-  "description": "A 10-question Edinburgh Postnatal Depression Scale (EPDS) check-in for new parents.",
+  "description": "A check-in for new parents based on the Edinburgh Postnatal Depression Scale (EPDS).",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f7f3ed",
