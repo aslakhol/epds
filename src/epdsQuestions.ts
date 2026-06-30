@@ -9,21 +9,6 @@ export type EpdsQuestion = {
   readonly options: readonly EpdsOption[];
 };
 
-/**
- * Validated EPDS wording and score mapping.
- *
- * Primary source: NSW Health, "Maternal and child health: supporting families
- * early", Appendix 4A questionnaire and Appendix 4B scoring guide, PDF pages
- * 52–53:
- * https://www1.health.nsw.gov.au/pds/ActivePDSDocuments/PD2010_017.pdf
- *
- * Corroborating form: NHS-hosted EPDS form citing Cox, Holden, and Sagovsky
- * (1987):
- * https://www.hackneyandcityhealthvisiting.nhs.uk/content/uploads/New-Edinburgh-Postnatal-Depression-Scale.pdf
- *
- * Do not edit this copy as ordinary product text. The wording, response order,
- * and score assigned to each response are part of the validated instrument.
- */
 export const QUESTIONS = [
   {
     id: 1,
